@@ -27,7 +27,8 @@ To setup the project for your homelab, the easiest setup is to create a `docker-
 
 
 # Development Setup
-CoreDNS API is a Nodejs app using the Nestjs framework. If you would like to dig around the code yourself, or modify and add to the logic, you'll want to be able to set it up for development. You will need `docker` installed, and at minimum `node` v18 LTS installed. This can be done via the following:
+CoreDNS API is a Nodejs app using the Nestjs framework. If you would like to dig around the code yourself, or modify and add to the logic, you'll want to be able to set it up for development. This can be done via the following:
+
 1. Clone the repo
 2. `cd` into the project root
 3. Create your volume folders by running the following command:
