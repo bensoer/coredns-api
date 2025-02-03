@@ -1,0 +1,19 @@
+volumes:
+  mongodb:
+
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    ports: 
+      - ${PORT}:${PORT}
+    # Comment out the volumes section to boot the application how it would be in production
+    volumes:
+      - .:/app
+      - ./config:${COREDNS_CONFIG_ROOT}
+    expose:
+      - ${PORT}
+    environment:
+      COREDNS_CONFIG_ROOT: ${COREDNS_CONFIG_ROOT}
+    # Comment out entrypoint section to boot the application how it would be in production
+    entrypoint: ['npm','--prefix', '/app', 'run', 'start:debug' ]
