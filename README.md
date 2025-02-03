@@ -13,6 +13,9 @@ This API was built off of my own exploration of CoreDNS as a private DNS service
 To use CoreDNS API, the following tools need to be installed on your system:
 - Docker
 
+For development, you will also need at minimum:
+- Node v18 LTS
+
 # Setup
 To setup the project for your homelab, the easiest setup is to create a `docker-compose.yaml` to deploy everything.
 
@@ -50,7 +53,6 @@ CoreDNS API is a Nodejs app using the Nestjs framework. If you would like to dig
     COREDNS_CONFIG_ROOT=/etc/coredns
     ENABLE_DEBUG_LOGGING=true
     ```
-    There are a few other settings available, described further down this README, but this should be enough to get your started
 3. Run `docker compose up` . This will build the docker container and then setup the dev configuration
 
 **Note:** If you run into issues or errors with `npm` installing packages, you may need to pass `--legacy-peer-deps`. This project uses Nestjs v10 and not all modules have officially updated or released compatible dependencies. They all work, they just haven't updated their `package.json` versions to allow the new version of Nestjs
