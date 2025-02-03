@@ -1,99 +1,91 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# CoreDNS API
+CoreDNS API is a simple containerised API, allowing you to manage the CoreDNS service from an API endpoint. 
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+This project is designed for homelab usage where you want to setup a custom domain for resolving services within your local LAN. It is intended to be deployed as a docker container or with docker compose along side the CoreDNS service.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+If you want to learn more about how to setup CoreDNS as a private server in your local network, checkout the following linkes:
+- https://coredns.io/manual/toc/
+- https://dev.to/robbmanes/running-coredns-as-a-dns-server-in-a-container-1d0
 
-## Description
+This API was built off of my own exploration of CoreDNS as a private DNS service for my homelab. You can read about my experience here in this shameless self plug: https://medium.com/@bensoer/setup-a-private-homelab-dns-server-using-coredns-and-docker-edcfdded841a
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+# Prerequisites
+To use CoreDNS API, the following tools need to be installed on your system:
+- Docker
 
-## Project setup
+# Setup
+To setup the project for your homelab, the easiest setup is to create a `docker-compose.yaml` to deploy everything.
 
-```bash
-$ npm install
+// TODO
+
+ # Usage
+ The purpose of this API is to provide an API endpoint to CRUD management of your DNS Zones and Routes. Once your CoreDNS instance and CoreDNS API instance is deployed you can view the OpenAPI docs located at the `/docs` endpoint of the CoreDNS API.
+
+
+
+# Development Setup
+CoreDNS API is a Nodejs app using the Nestjs framework. If you would like to dig around the code yourself, or modify and add to the logic, you'll want to be able to set it up for development. You will need `docker` installed, and at minimum `node` v18 LTS installed. This can be done via the following:
+1. Clone the repo
+2. `cd` into the project root
+3. Create your volume folders by running the following command:
+    ```bash
+    mkdir -p ./config/zones
+    touch ./config/Corefile
+    chmod -R 644 ./config
+    ```
+4. Paste the following `Corefile` configuration into the `./config/Corefile`:
+    ```
+    .:53 {
+        forward . 8.8.8.8 8.8.4.4
+        log
+        errors
+        health :8080
+        reload
+    }
+    ```
+3. Create an `.env` file with the following
+    ```.env
+    PORT=3000
+    SWAGGER_PORT=3000
+    COREDNS_CONFIG_ROOT=/etc/coredns
+    ENABLE_DEBUG_LOGGING=true
+    ```
+    There are a few other settings available, described further down this README, but this should be enough to get your started
+3. Run `docker compose up` . This will build the docker container and then setup the dev configuration
+
+**Note:** If you run into issues or errors with `npm` installing packages, you may need to pass `--legacy-peer-deps`. This project uses Nestjs v10 and not all modules have officially updated or released compatible dependencies. They all work, they just haven't updated their `package.json` versions to allow the new version of Nestjs
+
+# Configuration Options
+CoreDNS API can be configured with a number of environment variable values. The easiest way to set these is via `.env` files. CoreDNS API has been designed to overlap with a number of common `.env` values so that settings made in the `.env` will be picked up by docker compose and the application consistently.
+
+All of the `.env` values are as follows:
+| Key | Required | Description | Default |
+| --- | -------- | ----------- | ------- |
+| `COREDNS_CONFIG_ROOT` | Yes | Specify the path in the container the folder where the `Corefile`. The `zones` folder is assumed to be a subfolder within this root folder and will store all zone files within it. Youll want to make sure your volume mounts mount into this folder | N/A |
+| `PORT` | No | Specify the listening port for the app | `3000` |
+| `ENABLED_DEBUG_LOGGING` | No | Enabled more verbose logging output | `false`
+| `SWAGGER_PORT` | No | On the Swagger docs page, specify what port to hit to test calls | IF `WITH_SSL` is `false` - `80` . IF `WITH_SSL` is `true` - `443` |
+| `WITH_SSL` | No | On the Swagger docs page, specify whether to use HTTP or HTTPS when testing calls | `false` |
+
+## Modifying the `Corefile`
+ The CoreDNS API will handle creation, modification and deletion of both the `Corefile` and zone files within the `COREDNS_CONFIG_ROOT` defined folder path. Ideally, this environment variable should be set to `/etc/coredns`. You can add additional stanzas into the `Corefile` as you would like. The CoreDNS API will modify the file around your changes.
+ 
+ You can modify the default stanza required during setup _a little bit_.Certain configurations are required for minimum functionality and integration between CoreDNS and the CoreDNS API. Below is the minimum stanza:
+ ```
+.:53 {
+    forward . 8.8.8.8 8.8.4.4
+    log
+    errors
+    health :8080
+    reload
+}
 ```
-
-## Compile and run the project
-
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Here is a breakdown of what within it can be changed:
+| Line | Editable | Limitations |
+| ---- | -------- | ----------- |
+| `.:53 {` | No | This allows all traffic to enter via port 53. Port 53 currently is hardcoded in a bunch of the CoreDNS API. If you can not listen on port 53, CoreDNS API can not manage your CoreDNS server at this time |
+| `forward . 8.8.8.8 8.8.4.4` | Yes | Can remove and/or modify this as much as you like. See https://coredns.io/plugins/forward/ for details |
+| `log` | Yes | Can remove and/or modify this as much as you like. See  https://coredns.io/plugins/log/ for details |
+| `errors` | Yes | Can remove and/or modify this as much as you like. See https://coredns.io/plugins/errors/ for details |
+| `health :8080` | No | Used for integration and dependent modules to ensure CoreDNS is up and running before proceeding |
+| `reload` | No | This is required so that when CoreDNS API makes changes to the `Corefile`, those changes are picked up. Removing this will break CoreDNS API integration with CoreDNS |
