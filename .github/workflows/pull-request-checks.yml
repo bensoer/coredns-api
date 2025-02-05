@@ -1,0 +1,28 @@
+name: 'On PullRequest'
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    
+env:
+  NODE_VERSION: 18
+
+jobs:
+    lint-and-format-check:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v3
+
+            - name: Use Node.js ${{ env.NODE_VERSION }} With Server
+              uses: actions/setup-node@v3
+              with:
+                node-version: ${{ env.NODE_VERSION }}
+                cache: 'npm'
+                cache-dependency-path: server/package-lock.json
+            - name: Install Server Dependencies
+              run: 'npm ci --legacy-peer-deps'
+            - name: Run Server Compile Check
+              run: 'npm run build'

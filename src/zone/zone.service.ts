@@ -6,22 +6,25 @@ import * as fs from 'fs/promises';
 import { createReadStream, Dirent, createWriteStream } from 'fs';
 import * as readline from 'readline/promises'
 import { Zone } from './entities/zone.entity';
+import { Constants } from 'src/utils/constants';
 
 @Injectable()
 export class ZoneService {
 
   private readonly configurationFolderRoot
   private readonly zoneFolderRoot
+  private readonly coreFolderRoot
 
   private readonly zoneFileNameRegex = RegExp('^db\\.([\\w]+)\\.([\\w]+)$');
 
   private readonly logger = new Logger(ZoneService.name);
 
   constructor(private readonly configService: ConfigService){
-    this.configurationFolderRoot = this.configService.getOrThrow("COREDNS_CONFIG_ROOT")
+    this.configurationFolderRoot = Constants.COREDNS_CONFIG_ROOT;
     this.zoneFolderRoot = `${this.configurationFolderRoot}/zones`;
+    this.coreFolderRoot = `${this.configurationFolderRoot}/Corefile.d`;
   }
-
+  
   async create(createZoneDto: CreateZoneDto): Promise<Zone> {
 
     // Check this zone doesn't already exist. If it does we error
@@ -35,9 +38,8 @@ export class ZoneService {
 `$ORIGIN ${createZoneDto.hostname}.
 @        IN  SOA ${createZoneDto.servername}. ${createZoneDto.contact.replaceAll("@", ".")}. ${serialNumber} ${createZoneDto.refresh} ${createZoneDto.retry} ${createZoneDto.expiry} ${createZoneDto.ttl}`
 
-    await fs.writeFile(`${this.zoneFolderRoot}/db.${createZoneDto.hostname}`, zoneData)
-
-    // Add A Corefile Configuration
+    
+    // Create A Corefile Configuration
     const coreData = 
 `# ${createZoneDto.hostname} Zone Configuration
 ${createZoneDto.hostname}:53 {
@@ -48,91 +50,10 @@ ${createZoneDto.hostname}:53 {
     errors
 }
 `
-
-    // Go through the core file and verify that this entry doesn't already exist. If it does we want to overwrite it with this one
-    const lineReader = await this.getLineReaderOfFile(`${this.configurationFolderRoot}/Corefile`)
-    const writerFp = createWriteStream(`${this.configurationFolderRoot}/Corefile.new`)
-
-    let startOverwrite = false
-    let duplicateFound = false
-    let updateWritten = false
-    let bracketCount = 0
-    for await (const line of lineReader){
-      this.logger.debug(line)
-
-      // If we find the opening line, that means we need to start overwriting it with our stuff
-      if(line.includes(`${createZoneDto.hostname}:53 {`)){
-        startOverwrite = true
-        duplicateFound = true
-        bracketCount++
-      // Its not the opening line, but has an opening bracket and we have already started the overwrite section
-      // Increment the count as we need to see the equivelent number of closing brackets before printing
-      // the original content again
-      }else if(startOverwrite && line.includes(`{`)){
-        bracketCount++
-      }
-
-      // If we are currently in an overwrite and we spot the } closing bracket. Stop overwriting
-      if(startOverwrite == true && line.includes(`}`)){
-        bracketCount--
-      }else if(startOverwrite == true && bracketCount == 0){
-        startOverwrite = false
-      }
-
-      // If we are not overwriting anything, just reprint out the current Corefile contents
-      // We then say that the update has been written so that we don't keep doing this
-      if(!startOverwrite){
-        await new Promise<void>((resolve, reject) => {
-          writerFp.write(line + "\n", 'utf-8', (error) => {
-            if(error){
-              reject(error)
-            }else{
-              resolve()
-            }
-          })
-        })
-      }
-
-      // If we are currently in an overwrite, and we have not written the update
-      // that means we found the start of the old entry
-      // We need to now write out entry into the file
-      if(startOverwrite && !updateWritten){
-        await new Promise<void>((resolve, reject) => {
-          writerFp.write(coreData, 'utf-8', (error) => {
-            if(error){
-              reject(error)
-            }else{
-              resolve()
-            }
-          })
-        })
-        updateWritten = true
-      }
-    }
-
-    // IF a duplicate was found, its been updated by now.
-    // IF not, then the file has still not been updated
-
-    // So, if a duplicate was NOT found, we now need to write the core data to append it
-    if(!duplicateFound){
-      await new Promise<void>((resolve, reject) => {
-        writerFp.write(coreData, 'utf-8', (error) => {
-          if(error){
-            reject(error)
-          }else{
-            resolve()
-          }
-        })
-      })
-    }
-
-    // Close all of our pointers and readers
-    writerFp.close()
-    lineReader.close()
-
-    // Delete the old Corefile and rename the updated one to the same name
-    await fs.rm(`${this.configurationFolderRoot}/Corefile`)
-    await fs.rename(`${this.configurationFolderRoot}/Corefile.new`, `${this.configurationFolderRoot}/Corefile`)
+    await Promise.all([
+      fs.writeFile(`${this.zoneFolderRoot}/db.${createZoneDto.hostname}`, zoneData),
+      fs.writeFile(`${this.coreFolderRoot}/${createZoneDto.hostname}.Corefile`, coreData)
+    ])
 
     // Return our hostname data as a response
     return this.findOne(createZoneDto.hostname)
@@ -310,7 +231,11 @@ ${createZoneDto.hostname}:53 {
 
     const copyOfZone = this.findOne(zoneName)
 
-    await fs.rm(`${this.zoneFolderRoot}/db.${zoneName}`)
+    await Promise.all([
+      // by forcing, we won't get an error if the file does not exist either
+      fs.rm(`${this.zoneFolderRoot}/db.${zoneName}`, { force: true }),
+      fs.rm(`${this.coreFolderRoot}/${zoneName}.Corefile`, { force: true})
+    ])
 
     return copyOfZone
   }
