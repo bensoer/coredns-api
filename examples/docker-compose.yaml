@@ -1,0 +1,25 @@
+volumes:
+  coredns:
+
+services:
+  coredns:
+    image: coredns/coredns:latest
+    container_name: coredns
+    command: -conf /etc/coredns/Corefile -dns.port 53
+    ports:
+      - "53:53/udp"
+      - "8080:8080"
+    volumes:
+      - coredns:/etc/coredns
+    depends_on:
+      - corednsapi
+  corednsapi:
+    image: ghcr.io/bensoer/coredns-api:sha-cdce12c
+    restart: unless-stopped
+    ports: 
+      - 3000:3000
+    volumes:
+      - coredns:/etc/coredns
+    environment:
+      SWAGGER_PORT: 3000 # Set to the same as your external port if you want to be able to make calls with the swagger UI
+      DNS_FORWARD_ADDRESSES: '1.1.1.1 1.0.0.1' # Overrides default of Google
