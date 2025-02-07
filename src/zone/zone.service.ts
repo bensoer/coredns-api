@@ -44,14 +44,16 @@ export class ZoneService {
 `# ${createZoneDto.hostname} Zone Configuration
 ${createZoneDto.hostname}:53 {
     auto {
-        directory ${this.zoneFolderRoot}
+        directory ${this.zoneFolderRoot}/db.${createZoneDto.hostname}.d
     }
     log
     errors
 }
 `
+
+    await fs.mkdir(`${this.zoneFolderRoot}/db.${createZoneDto.hostname}.d`)
     await Promise.all([
-      fs.writeFile(`${this.zoneFolderRoot}/db.${createZoneDto.hostname}`, zoneData),
+      fs.writeFile(`${this.zoneFolderRoot}/db.${createZoneDto.hostname}.d/db.${createZoneDto.hostname}`, zoneData),
       fs.writeFile(`${this.coreFolderRoot}/${createZoneDto.hostname}.Corefile`, coreData)
     ])
 
@@ -60,14 +62,23 @@ ${createZoneDto.hostname}:53 {
   }
 
   private async getAllZoneFiles(): Promise<Array<Dirent>>{
-    this.logger.log(`Searching ${this.zoneFolderRoot} For All Zone Files`)
-    const zoneFiles = []
-    const folderItems = await fs.readdir(this.zoneFolderRoot, {withFileTypes: true})
-    for(const folderItem of folderItems) {
-      if(!folderItem.isDirectory() && this.zoneFileNameRegex.test(folderItem.name)){
-        zoneFiles.push(folderItem)
+
+    const recursiveSearch = async (rootFolder:string) => {
+      const folderItems = await fs.readdir(rootFolder, {withFileTypes: true})
+      const zoneFiles = [] 
+      for(const folderItem of folderItems) {
+        if(folderItem.isDirectory()){
+          zoneFiles.push(... await recursiveSearch(`${rootFolder}/${folderItem.name}`))
+        }else if(!folderItem.isDirectory() && this.zoneFileNameRegex.test(folderItem.name)){
+          zoneFiles.push(folderItem)
+        }
       }
+
+      return zoneFiles
     }
+
+    this.logger.log(`Searching ${this.zoneFolderRoot} For All Zone Files`)
+    const zoneFiles = await recursiveSearch(this.zoneFolderRoot)
 
     this.logger.debug(zoneFiles)
     return zoneFiles
@@ -100,7 +111,7 @@ ${createZoneDto.hostname}:53 {
   }
 
   async zoneExists(zoneName: string): Promise<boolean>{
-    const zoneFilePath = `${this.zoneFolderRoot}/db.${zoneName}`
+    const zoneFilePath = `${this.zoneFolderRoot}/db.${zoneName}.d/db.${zoneName}`
     try {
       await fs.access(zoneFilePath, fs.constants.F_OK)
       return true
@@ -111,7 +122,7 @@ ${createZoneDto.hostname}:53 {
   }
 
   async getLineReaderOfZoneFile(zoneFileName: string): Promise<readline.Interface>{
-    const zoneFilePath = `${this.zoneFolderRoot}/${zoneFileName}`
+    const zoneFilePath = `${this.zoneFolderRoot}/${zoneFileName}.d/${zoneFileName}`
     return await this.getLineReaderOfFile(zoneFilePath)
   }
 
@@ -162,14 +173,14 @@ ${createZoneDto.hostname}:53 {
       throw new NotFoundException("Zone Not Found - Zone Does Not Exist")
     }
 
-    const lineReader = await this.getLineReaderOfZoneFile(zoneName)
+    const lineReader = await this.getLineReaderOfZoneFile(`db.${zoneName}`)
     const soaLine = await this.findSOALineOfZoneFile(lineReader)
     
     if(soaLine == null){
       throw new NotFoundException("Zone Not Found - SOA Not Specified And Thus Can't Verify")
     }
 
-    const fp = createWriteStream(`${this.zoneFolderRoot}/new.db.${zoneName}`)
+    const fp = createWriteStream(`${this.zoneFolderRoot}/db.${zoneName}.d/new.db.${zoneName}`)
 
     for await (const line of lineReader){
       if(line.includes("SOA")){
@@ -208,16 +219,16 @@ ${createZoneDto.hostname}:53 {
           // throw final exception
           fp.close()
           lineReader.close()
-          await fs.rm(`${this.zoneFolderRoot}/new.db.${zoneName}`)
+          await fs.rm(`${this.zoneFolderRoot}/db.${zoneName}.d/new.db.${zoneName}`)
           throw new InternalServerErrorException("Zone Update Failed. Changes Have Not Been Applied")
         }
       }
     }
 
     // all lines have been written. Now we delete the old zone file
-    await fs.rm(`${this.zoneFolderRoot}/db.${zoneName}`)
+    await fs.rm(`${this.zoneFolderRoot}/db.${zoneName}.d/db.${zoneName}`)
     // rename the new one to the correct name
-    await fs.rename(`${this.zoneFolderRoot}/new.db.${zoneName}`, `${this.zoneFolderRoot}/db.${zoneName}`)
+    await fs.rename(`${this.zoneFolderRoot}/db.${zoneName}.d/new.db.${zoneName}`, `${this.zoneFolderRoot}/db.${zoneName}.d/db.${zoneName}`)
 
     return this.findOne(zoneName)
 
@@ -233,7 +244,7 @@ ${createZoneDto.hostname}:53 {
 
     await Promise.all([
       // by forcing, we won't get an error if the file does not exist either
-      fs.rm(`${this.zoneFolderRoot}/db.${zoneName}`, { force: true }),
+      fs.rm(`${this.zoneFolderRoot}/db.${zoneName}.d`, { force: true, recursive: true }),
       fs.rm(`${this.coreFolderRoot}/${zoneName}.Corefile`, { force: true})
     ])
 

@@ -7,7 +7,7 @@ services:
     # Comment out the volumes section to boot the application how it would be in production
     volumes:
       - .:/app
-      - ./config:${COREDNS_CONFIG_ROOT}
+      - ./config:/etc/coredns
     expose:
       - ${PORT}
     # Comment out entrypoint section to boot the application how it would be in production

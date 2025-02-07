@@ -5,7 +5,7 @@ import { Record } from "../entities/record.entity";
 import { GetRecordDto } from "../dto/get-record.dto";
 
 @Injectable()
-export class ZoneProfile extends AutomapperProfile {
+export class RecordProfile extends AutomapperProfile {
     
     constructor(@InjectMapper() mapper: Mapper){
         super(mapper)

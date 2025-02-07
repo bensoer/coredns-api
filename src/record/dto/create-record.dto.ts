@@ -8,7 +8,7 @@ export class CreateRecordDto {
     @IsNotEmpty()
     @ApiProperty({
         description:
-            'Domain for the record',
+            'Domain for the record. To add a record for the root domain / zone. Use @',
     })
     domain: string
 
