@@ -14,7 +14,7 @@ services:
     depends_on:
       - corednsapi
   corednsapi:
-    image: ghcr.io/bensoer/coredns-api:sha-cdce12c
+    image: ghcr.io/bensoer/coredns-api:sha-e926487
     restart: unless-stopped
     ports: 
       - 3000:3000

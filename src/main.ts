@@ -9,6 +9,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as fsp from 'fs/promises'
 import * as fs from 'fs'
 import { Constants } from './utils/constants';
+import { FileUtils } from './utils/fileutils';
 
 async function bootstrap() {
 
@@ -59,9 +60,8 @@ async function bootstrap() {
   // 6) Verify core configuration files are setup
 
   const coreFileCheck = async () => {
-    try{
-      await fsp.access(`${Constants.COREDNS_CONFIG_ROOT}/Corefile`, fsp.constants.F_OK)
-    }catch(err){
+    if(! await FileUtils.fileExists(`${Constants.COREDNS_CONFIG_ROOT}/Corefile`)){
+      console.log("File Does Not Exist. Creating")
       const corefileData = `import ./Corefile.d/*`
       await fsp.writeFile(`${Constants.COREDNS_CONFIG_ROOT}/Corefile`, corefileData)
     }
@@ -76,9 +76,7 @@ async function bootstrap() {
   }
 
   const coreFileDCheck = async () => {
-    try{
-      await fsp.access(`${Constants.COREDNS_CONFIG_ROOT}/Corefile.d/Corefile`, fsp.constants.F_OK)
-    }catch(err){
+    if(! await FileUtils.fileExists(`${Constants.COREDNS_CONFIG_ROOT}/Corefile`)){
       const defaultDnsForwardAddresses = "8.8.8.8 8.8.4.4"
       let dnsForwardAddresses = configService.get("DNS_FORWARD_ADDRESSES", defaultDnsForwardAddresses)
       const components = dnsForwardAddresses.split(" ")
