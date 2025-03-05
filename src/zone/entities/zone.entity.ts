@@ -1,47 +1,61 @@
-import { AutoMap } from "@automapper/classes"
+import { AutoMap } from '@automapper/classes';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
+@Entity('zone')
 export class Zone {
+  public static createFromSOAData(zoneName: string, soaLine: string) {
+    const cleanedEnds = soaLine.trim();
+    const singleSpaced = cleanedEnds.replace(/\s+/g, ' ');
+    const components = singleSpaced.split(' ');
 
-    public static createFromSOAData(zoneName: string, soaLine: string){
+    const zone = new Zone();
+    zone.hostname = zoneName;
+    zone.servername = components[3];
+    zone.contact = components[4];
+    zone.serial = components[5];
+    zone.refresh = Number(components[6]);
+    zone.retry = Number(components[7]);
+    zone.expiry = Number(components[8]);
+    zone.ttl = Number(components[9]);
 
-        const cleanedEnds = soaLine.trim()
-        const singleSpaced = cleanedEnds.replace(/\s+/g, " ")
-        const components = singleSpaced.split(" ")
+    return zone;
+  }
 
-        const zone = new Zone()
-        zone.hostname = zoneName
-        zone.servername = components[3]
-        zone.contact = components[4]
-        zone.serial = components[5]
-        zone.refresh = Number(components[6])
-        zone.retry = Number(components[7])
-        zone.expiry = Number(components[8])
-        zone.ttl = Number(components[9])
+  @PrimaryGeneratedColumn()
+  id?: number;
 
-        return zone
-    }
+  @Column()
+  guid: string;
 
-    @AutoMap()
-    hostname: string
+  @AutoMap()
+  @Column()
+  hostname: string;
 
-    @AutoMap()
-    servername: string
+  @AutoMap()
+  @Column()
+  servername: string;
 
-    @AutoMap()
-    contact: string
+  @AutoMap()
+  @Column()
+  contact: string;
 
-    @AutoMap()
-    serial: string
+  @AutoMap()
+  @Column()
+  serial: string;
 
-    @AutoMap()
-    ttl: number
+  @AutoMap()
+  @Column()
+  ttl: number;
 
-    @AutoMap()
-    refresh: number
+  @AutoMap()
+  @Column()
+  refresh: number;
 
-    @AutoMap()
-    retry: number
+  @AutoMap()
+  @Column()
+  retry: number;
 
-    @AutoMap()
-    expiry: number
+  @AutoMap()
+  @Column()
+  expiry: number;
 }

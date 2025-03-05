@@ -1,16 +1,27 @@
-import { AutoMap } from "@automapper/classes"
+import { AutoMap } from '@automapper/classes';
+import { Zone } from 'src/zone/entities/zone.entity';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 
+@Entity('record')
 export class Record {
+  @PrimaryGeneratedColumn()
+  id?: number;
 
-    @AutoMap()
-    hash: string
+  @Column()
+  zoneId: number;
 
-    @AutoMap()
-    domain: string
+  @Column()
+  guid: string;
 
-    @AutoMap()
-    type: string
+  @AutoMap()
+  @Column()
+  domain: string;
 
-    @AutoMap()
-    value: string
+  @AutoMap()
+  @Column()
+  type: string;
+
+  @AutoMap()
+  @Column()
+  content: string;
 }

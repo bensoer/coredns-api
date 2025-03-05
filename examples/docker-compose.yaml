@@ -4,22 +4,27 @@ volumes:
 services:
   coredns:
     image: coredns/coredns:latest
+    restart: unless-stopped
     container_name: coredns
     command: -conf /etc/coredns/Corefile -dns.port 53
     ports:
       - "53:53/udp"
-      - "8080:8080"
     volumes:
-      - coredns:/etc/coredns
+      - ./config:/etc/coredns
     depends_on:
       - corednsapi
   corednsapi:
-    image: ghcr.io/bensoer/coredns-api:sha-e926487
+    image: ghcr.io/bensoer/coredns-api:latest
+    container_name: coredns-api
     restart: unless-stopped
     ports: 
       - 3000:3000
     volumes:
-      - coredns:/etc/coredns
+      - ./config:/etc/coredns
     environment:
-      SWAGGER_PORT: 3000 # Set to the same as your external port if you want to be able to make calls with the swagger UI
-      DNS_FORWARD_ADDRESSES: '1.1.1.1 1.0.0.1' # Overrides default of Google
+      # (Required) Set the root location where all configurations are stored. This is so that the API knows where to store config for CoreDNS to pickup
+      COREDNS_ROOT_FOLDER: /etc/coredns
+      # (Optional) Set to the same as your external port if you want to be able to make calls with the swagger UI
+      SWAGGER_PORT: '3000' 
+      # (Optional) If serving CoreDNS API over HTTPS and want the Swagger UI to be able to hit it - set this to true
+      USE_SSL: 'false'

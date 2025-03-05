@@ -1,0 +1,17 @@
+FROM golang:1.22-bookworm AS build
+
+RUN git clone https://github.com/coredns/coredns.git /coredns && \
+    cd /coredns && \
+    printf 'pdsql_sqlite:github.com/jinzhu/gorm/dialects/sqlite\n' >> ./plugin.cfg && \
+    printf 'pdsql:github.com/wenerme/coredns-pdsql\n' >> ./plugin.cfg && \
+    go get github.com/wenerme/coredns-pdsql && \
+    go get github.com/jinzhu/gorm/dialects/sqlite && \
+    GOFLAGS="-buildvcs=false" make gen && GOFLAGS="-buildvcs=false" make
+    #go generate && go build -o coredns
+
+
+FROM debian:bookworm-20250203-slim AS production
+COPY --from=build /coredns/coredns .
+RUN  mkdir -p /etc/coredns && touch /etc/coredns/Corefile
+
+ENTRYPOINT [ "/coredns"]

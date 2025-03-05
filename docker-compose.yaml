@@ -1,14 +1,35 @@
 services:
+  coredns:
+    image: coredns/coredns:latest
+    restart: unless-stopped
+    container_name: coredns
+    command: -conf /etc/coredns/Corefile -dns.port 53
+    ports:
+      - "53:53/udp"
+      - "8080:8080"
+    volumes:
+      - ./config:/etc/coredns
+    depends_on:
+      - api
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: coredns-api
     restart: unless-stopped
     ports: 
       - ${PORT}:${PORT}
+    env_file: .env
     # Comment out the volumes section to boot the application how it would be in production
     volumes:
-      - .:/app
       - ./config:/etc/coredns
+      - ./src:/app/src
+      - ./nest-cli.json:/app/nest-cli.json
+      - ./tsconfig.build.json:/app/tsconfig.build.json
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
     expose:
       - ${PORT}
     # Comment out entrypoint section to boot the application how it would be in production
-    entrypoint: ['npm','--prefix', '/app', 'run', 'start:debug' ]
+    entrypoint: [ "npm", "--prefix" , "/app", "run" , "start:docker-compose-dev"]

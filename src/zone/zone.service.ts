@@ -1,47 +1,66 @@
-import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateZoneDto } from './dto/create-zone.dto';
 import { UpdateZoneDto } from './dto/update-zone.dto';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs/promises';
 import { createReadStream, Dirent, createWriteStream } from 'fs';
-import * as readline from 'readline/promises'
+import * as readline from 'readline/promises';
 import { Zone } from './entities/zone.entity';
 import { Constants } from 'src/utils/constants';
+import { StringUtils } from 'src/utils/stringutils';
+import { FileUtils } from 'src/utils/fileutils';
+import { UUIUtils } from 'src/utils/uuidutils';
+import { ZoneRepository } from './zone.repository';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class ZoneService {
-
-  private readonly configurationFolderRoot
-  private readonly zoneFolderRoot
-  private readonly coreFolderRoot
-
-  private readonly zoneFileNameRegex = RegExp('^db\\.([\\w]+)\\.([\\w]+)$');
+  private readonly configurationFolderRoot;
+  private readonly zoneFolderRoot;
+  private readonly coreFolderRoot;
 
   private readonly logger = new Logger(ZoneService.name);
 
-  constructor(private readonly configService: ConfigService){
-    this.configurationFolderRoot = Constants.COREDNS_CONFIG_ROOT;
+  constructor(
+    private zoneRepository: ZoneRepository,
+    configService: ConfigService,
+    private dataSource: DataSource,
+  ) {
+    this.configurationFolderRoot = configService.getOrThrow<string>(
+      'COREDNS_CONFIG_ROOT',
+    );
     this.zoneFolderRoot = `${this.configurationFolderRoot}/zones`;
     this.coreFolderRoot = `${this.configurationFolderRoot}/Corefile.d`;
   }
-  
-  async create(createZoneDto: CreateZoneDto): Promise<Zone> {
 
+  async create(createZoneDto: CreateZoneDto): Promise<Zone> {
     // Check this zone doesn't already exist. If it does we error
-    if(await this.zoneExists(createZoneDto.hostname)){
-      throw new BadRequestException("Zone Already Exists")
+    if (await this.zoneExists(createZoneDto.hostname)) {
+      throw new BadRequestException('Zone Already Exists');
     }
 
-    // Create a Zone File
-    const serialNumber = await this.generateSOASerialNumber()
-    const zoneData = 
-`$ORIGIN ${createZoneDto.hostname}.
-@        IN  SOA ${createZoneDto.servername}. ${createZoneDto.contact.replaceAll("@", ".")}. ${serialNumber} ${createZoneDto.refresh} ${createZoneDto.retry} ${createZoneDto.expiry} ${createZoneDto.ttl}`
+    const zone: Zone = {
+      guid: UUIUtils.generateUUID(),
+      hostname: createZoneDto.hostname,
+      servername: createZoneDto.servername,
+      contact: createZoneDto.contact,
+      serial: await this.generateSOASerialNumber(),
+      ttl: createZoneDto.ttl,
+      refresh: createZoneDto.refresh,
+      retry: createZoneDto.retry,
+      expiry: createZoneDto.expiry,
+    };
 
-    
+    zone.id = await this.zoneRepository.insert(zone);
+
     // Create A Corefile Configuration
-    const coreData = 
-`# ${createZoneDto.hostname} Zone Configuration
+    const coreData = `# ${createZoneDto.hostname} Zone Configuration
 ${createZoneDto.hostname}:53 {
     auto {
         directory ${this.zoneFolderRoot}/db.${createZoneDto.hostname}.d
@@ -49,205 +68,99 @@ ${createZoneDto.hostname}:53 {
     log
     errors
 }
-`
+`;
+    await fs.writeFile(
+      `${this.coreFolderRoot}/${createZoneDto.hostname}.Corefile`,
+      coreData,
+    );
 
-    await fs.mkdir(`${this.zoneFolderRoot}/db.${createZoneDto.hostname}.d`)
-    await Promise.all([
-      fs.writeFile(`${this.zoneFolderRoot}/db.${createZoneDto.hostname}.d/db.${createZoneDto.hostname}`, zoneData),
-      fs.writeFile(`${this.coreFolderRoot}/${createZoneDto.hostname}.Corefile`, coreData)
-    ])
-
-    // Return our hostname data as a response
-    return this.findOne(createZoneDto.hostname)
+    return zone;
   }
 
-  private async getAllZoneFiles(): Promise<Array<Dirent>>{
-
-    const recursiveSearch = async (rootFolder:string) => {
-      const folderItems = await fs.readdir(rootFolder, {withFileTypes: true})
-      const zoneFiles = [] 
-      for(const folderItem of folderItems) {
-        if(folderItem.isDirectory()){
-          zoneFiles.push(... await recursiveSearch(`${rootFolder}/${folderItem.name}`))
-        }else if(!folderItem.isDirectory() && this.zoneFileNameRegex.test(folderItem.name)){
-          zoneFiles.push(folderItem)
-        }
-      }
-
-      return zoneFiles
-    }
-
-    this.logger.log(`Searching ${this.zoneFolderRoot} For All Zone Files`)
-    const zoneFiles = await recursiveSearch(this.zoneFolderRoot)
-
-    this.logger.debug(zoneFiles)
-    return zoneFiles
-    
+  async findAll(): Promise<Array<Zone>> {
+    const { totalItems, entities } = await this.zoneRepository.readAll();
+    return entities;
   }
 
-  async findAll() : Promise<Array<Zone>> {
-    const zones = new Array<Zone>()
-
-    for (const zoneFile of await this.getAllZoneFiles()) {
-
-      const lineReader = await this.getLineReaderOfZoneFile(zoneFile.name)
-      const soaLine = await this.findSOALineOfZoneFile(lineReader)
-
-      if(soaLine == null){
-        // were not going to error, but unfound SOA Lines will be skipped in output
-        lineReader.close()
-        continue
-      }
-
-      const zoneFileNameComponents = this.zoneFileNameRegex.exec(zoneFile.name)
-      const zoneName = `${zoneFileNameComponents[1]}.${zoneFileNameComponents[2]}`
-
-      const zone = Zone.createFromSOAData(zoneName, soaLine)
-      zones.push(zone)
-
-    }
-
-    return zones
-  }
-
-  async zoneExists(zoneName: string): Promise<boolean>{
-    const zoneFilePath = `${this.zoneFolderRoot}/db.${zoneName}.d/db.${zoneName}`
+  async zoneExists(zoneHostname: string): Promise<boolean> {
     try {
-      await fs.access(zoneFilePath, fs.constants.F_OK)
-      return true
-    }catch(error){
-      this.logger.debug(error)
-      return false
+      await this.zoneRepository.readOneByHostname(zoneHostname);
+      return true;
+    } catch (error) {
+      return false;
     }
   }
 
-  async getLineReaderOfZoneFile(zoneFileName: string): Promise<readline.Interface>{
-    const zoneFilePath = `${this.zoneFolderRoot}/${zoneFileName}.d/${zoneFileName}`
-    return await this.getLineReaderOfFile(zoneFilePath)
+  async generateSOASerialNumber(): Promise<string> {
+    const utcDateTime = new Date(Date.now());
+    return `${String(utcDateTime.getUTCFullYear()).slice(-2)}${('0' + String(utcDateTime.getUTCMonth())).slice(-2)}${('0' + String(utcDateTime.getUTCDate())).slice(-2)}${('0' + String(utcDateTime.getUTCHours())).slice(-2)}${('0' + String(utcDateTime.getUTCMinutes())).slice(-2)}`;
   }
 
-  async getLineReaderOfFile(filePath: string): Promise<readline.Interface> {
-    const zoneFileStream = createReadStream(filePath)
-    return readline.createInterface({ input: zoneFileStream, terminal: false, crlfDelay: Infinity })
-  }
-
-  async findSOALineOfZoneFile(lineReader: readline.Interface): Promise<string|null> {
-    for await (const line of lineReader){
-      if(line.includes("SOA")){
-        return line
-      }
+  async findOne(zoneGuid: string): Promise<Zone> {
+    try {
+      return await this.zoneRepository.read(zoneGuid);
+    } catch (error) {
+      throw new NotFoundException('Zone Not Found - Zone Does Not Exist');
     }
-
-    return null
   }
 
-  async generateSOASerialNumber(): Promise<string>{
-    const utcDateTime = new Date(Date.now())
-    return `${String(utcDateTime.getUTCFullYear()).slice(-2)}${('0' + String(utcDateTime.getUTCMonth())).slice(-2)}${( '0' + String(utcDateTime.getUTCDate())).slice(-2)}${('0' + String(utcDateTime.getUTCHours())).slice(-2)}${('0' + String(utcDateTime.getUTCMinutes())).slice(-2)}`
-  }
-
-  async findOne(zoneName: string): Promise<Zone> {
-    
-    if(! await this.zoneExists(zoneName)){
-      throw new NotFoundException("Zone Not Found - Zone Does Not Exist")
-    }
-
-    const lineReader = await this.getLineReaderOfZoneFile(`db.${zoneName}`)
-    const soaLine = await this.findSOALineOfZoneFile(lineReader)
-    
-    if(soaLine == null){
-      lineReader.close()
-      throw new NotFoundException("Zone Not Found - SOA Not Specified And Thus Can't Verify")
-    }
-
-    const zone = Zone.createFromSOAData(zoneName, soaLine)
-    lineReader.close()
-
-    return zone
-     
-  }
-
-  async update(zoneName: string, updateZoneDto: UpdateZoneDto): Promise<Zone> {
+  async update(zoneGuid: string, updateZoneDto: UpdateZoneDto): Promise<Zone> {
     // Confirm it exists by finding it
-    if(! await this.zoneExists(zoneName)){
-      throw new NotFoundException("Zone Not Found - Zone Does Not Exist")
-    }
+    const existingZone = await this.findOne(zoneGuid);
 
-    const lineReader = await this.getLineReaderOfZoneFile(`db.${zoneName}`)
-    const soaLine = await this.findSOALineOfZoneFile(lineReader)
-    
-    if(soaLine == null){
-      throw new NotFoundException("Zone Not Found - SOA Not Specified And Thus Can't Verify")
-    }
+    const updatedZone: Zone = {
+      id: existingZone.id,
+      guid: existingZone.guid,
+      hostname: existingZone.hostname,
+      servername: updateZoneDto.servername,
+      contact: updateZoneDto.contact,
+      serial: await this.generateSOASerialNumber(),
+      ttl: updateZoneDto.ttl,
+      refresh: updateZoneDto.refresh,
+      retry: updateZoneDto.retry,
+      expiry: updateZoneDto.expiry,
+    };
 
-    const fp = createWriteStream(`${this.zoneFolderRoot}/db.${zoneName}.d/new.db.${zoneName}`)
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    for await (const line of lineReader){
-      if(line.includes("SOA")){
-
-        const serialNumber = await this.generateSOASerialNumber()
-
-        const newSOA = `@ IN SOA ${updateZoneDto.servername}. ${updateZoneDto.contact} ${serialNumber} ${updateZoneDto.refresh} ${updateZoneDto.retry} ${updateZoneDto.expiry} ${updateZoneDto.ttl}`
-
-        await new Promise<void>((resolve, reject) => {
-          fp.write(newSOA, (error) => {
-            if(error){
-              reject(error)
-            }else{
-              resolve()
-            }
-          })
-        })
-
-      }else{
-
-        try{
-          await new Promise<void>((resolve, reject) => {
-            fp.write(line, (error) => {
-              if(error){
-                reject(error)
-              }else{
-                resolve()
-              }
-            })
-          })
-        }catch(error){
-          // writing failed, so everything will fail then
-          // close the fp
-          // close the line reader
-          // delete the temp file
-          // throw final exception
-          fp.close()
-          lineReader.close()
-          await fs.rm(`${this.zoneFolderRoot}/db.${zoneName}.d/new.db.${zoneName}`)
-          throw new InternalServerErrorException("Zone Update Failed. Changes Have Not Been Applied")
-        }
+    try {
+      const effectedRows = await this.zoneRepository.update(
+        zoneGuid,
+        updatedZone,
+        queryRunner,
+      );
+      if (effectedRows <= 0) {
+        throw new InternalServerErrorException(
+          'Zone Update Failed. Changes Have Not Been Applied',
+        );
       }
+
+      await queryRunner.commitTransaction();
+      await queryRunner.release();
+      return await this.findOne(zoneGuid);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
+      throw error;
     }
-
-    // all lines have been written. Now we delete the old zone file
-    await fs.rm(`${this.zoneFolderRoot}/db.${zoneName}.d/db.${zoneName}`)
-    // rename the new one to the correct name
-    await fs.rename(`${this.zoneFolderRoot}/db.${zoneName}.d/new.db.${zoneName}`, `${this.zoneFolderRoot}/db.${zoneName}.d/db.${zoneName}`)
-
-    return this.findOne(zoneName)
-
   }
 
-  async remove(zoneName: string): Promise<Zone> {
-    
-    if ( ! await this.zoneExists(zoneName)){
-      throw new NotFoundException("Zone Not Found - Zone Does Not Exist")
+  async remove(zoneGuid: string): Promise<Zone> {
+    const existingZone = await this.findOne(zoneGuid);
+
+    const effectedRows = await this.zoneRepository.delete(zoneGuid);
+    if (effectedRows <= 0) {
+      throw new NotFoundException(
+        'Record To Delete Was Not Found. Changes Have Not Been Applied',
+      );
     }
 
-    const copyOfZone = this.findOne(zoneName)
+    await fs.rm(`${this.coreFolderRoot}/${existingZone.hostname}.Corefile`, {
+      force: true,
+    });
 
-    await Promise.all([
-      // by forcing, we won't get an error if the file does not exist either
-      fs.rm(`${this.zoneFolderRoot}/db.${zoneName}.d`, { force: true, recursive: true }),
-      fs.rm(`${this.coreFolderRoot}/${zoneName}.Corefile`, { force: true})
-    ])
-
-    return copyOfZone
+    return existingZone;
   }
 }

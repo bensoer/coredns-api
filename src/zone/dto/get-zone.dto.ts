@@ -1,33 +1,32 @@
-import { AutoMap } from '@automapper/classes'
-import { ApiProperty } from '@nestjs/swagger'
+import { AutoMap } from '@automapper/classes';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class GetZoneDto {
+  @AutoMap()
+  @ApiProperty()
+  hostname: string;
 
-    @AutoMap()
-    @ApiProperty()
-    hostname: string
+  @AutoMap()
+  @ApiProperty()
+  servername: string;
 
-    @AutoMap()
-    @ApiProperty()
-    servername: string
+  @AutoMap()
+  @ApiProperty()
+  contact: string;
 
-    @AutoMap()
-    @ApiProperty()
-    contact: string
+  @AutoMap()
+  @ApiProperty()
+  ttl: number;
 
-    @AutoMap()
-    @ApiProperty()
-    ttl: number
+  @AutoMap()
+  @ApiProperty()
+  refresh: number;
 
-    @AutoMap()
-    @ApiProperty()
-    refresh: number
+  @AutoMap()
+  @ApiProperty()
+  retry: number;
 
-    @AutoMap()
-    @ApiProperty()
-    retry: number
-
-    @AutoMap()
-    @ApiProperty()
-    expiry: number
+  @AutoMap()
+  @ApiProperty()
+  expiry: number;
 }

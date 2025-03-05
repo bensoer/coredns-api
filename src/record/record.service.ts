@@ -1,134 +1,118 @@
-import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateRecordDto } from './dto/create-record.dto';
 import { UpdateRecordDto } from './dto/update-record.dto';
 import { Record } from './entities/record.entity';
-import * as crypto from 'crypto'
+import * as crypto from 'crypto';
 import { FileUtils } from 'src/utils/fileutils';
 import { Constants } from 'src/utils/constants';
-import * as fsp from 'fs/promises'
+import * as fsp from 'fs/promises';
 import { createWriteStream } from 'fs';
+import { StringUtils } from 'src/utils/stringutils';
+import { RecordRepository } from './record.repository';
+import { UUIUtils } from 'src/utils/uuidutils';
+import { ZoneRepository } from 'src/zone/zone.repository';
+import { DataSource, Table } from 'typeorm';
+import { InjectDataSource } from '@nestjs/typeorm';
 
 @Injectable()
 export class RecordService {
-
-  private readonly configurationFolderRoot
-  private readonly zoneFolderRoot
-
   private readonly logger = new Logger(RecordService.name);
 
-  constructor(){
-    this.configurationFolderRoot = Constants.COREDNS_CONFIG_ROOT;
-    this.zoneFolderRoot = `${this.configurationFolderRoot}/zones`;
+  constructor(
+    private recordRepository: RecordRepository,
+    private zoneRepository: ZoneRepository,
+    @InjectDataSource() private dataSource: DataSource,
+  ) {}
+
+  async create(zoneGuid: string, newRecord: CreateRecordDto): Promise<Record> {
+    const zone = await this.zoneRepository.read(zoneGuid);
+
+    const record: Record = {
+      guid: UUIUtils.generateUUID(),
+      zoneId: zone.id,
+      domain: newRecord.domain,
+      type: newRecord.type,
+      content: newRecord.content,
+    };
+
+    record.id = await this.recordRepository.insert(record);
+
+    return record;
   }
 
-  private async generateHashForEntry(recordEntryLine: string): Promise<string>{
-    return crypto.createHash('sha256').update(recordEntryLine).digest('hex')
+  async findAll(zoneGuid: string): Promise<Array<Record>> {
+    const zone = await this.zoneRepository.read(zoneGuid);
+    const { totalItems, entities } = await this.recordRepository.readAllOfZone(
+      zone.id,
+    );
+    return entities;
   }
 
-  private async convertLineToRecord(recordLine: string): Promise<Record> {
-    const cleanLine = recordLine.trim().replaceAll(/\s+/g, " ")
-    const components = cleanLine.split(" ")
-
-    const record = new Record()
-    record.domain = components[0]
-    record.type = components[2]
-    record.value = components[3]
-    record.hash = await this.generateHashForEntry(cleanLine)
-
-    return record
-  }
-  
-  async create(zoneName: string, record: CreateRecordDto): Promise<Record> {
-    const recordLine = `${record.domain} IN ${record.type} ${record.value}`
-    this.logger.log(recordLine)
-    const hash = await this.generateHashForEntry(recordLine)
-    this.logger.log(hash)
-
-    if(await FileUtils.fileExists(`${this.zoneFolderRoot}/db.${zoneName}.d/db.${hash}`)){
-      throw new BadRequestException("Record Already Exists")
-    }
-
-    this.logger.log("About To Write The File")
-
-    await fsp.writeFile(`${this.zoneFolderRoot}/db.${zoneName}.d/db.${hash}`, recordLine)
-
-    return {
-      domain: record.domain,
-      type: record.type,
-      value: record.value,
-      hash: hash
+  async findOne(recordGuid: string): Promise<Record> {
+    try {
+      return await this.recordRepository.read(recordGuid);
+    } catch (error: unknown) {
+      throw new NotFoundException('Record Not Found');
     }
   }
 
-  async findAll(zoneName: string): Promise<Array<Record>> {
-    const records = new Array<Record>()
+  async update(
+    recordGuid: string,
+    recordUpdates: UpdateRecordDto,
+  ): Promise<Record> {
+    const existingRecord = await this.findOne(recordGuid);
 
-    for(const fileItem of await fsp.readdir(`${this.zoneFolderRoot}/db.${zoneName}.d`, { withFileTypes: true})){
-      const lineReader = await FileUtils.getLineReaderOfFile(`${this.zoneFolderRoot}/db.${zoneName}.d/${fileItem.name}`)
-      for await (const line of lineReader){
-        if(!line.includes("$ORIGIN")){
-          // if it does have $ORIGIN in it, then its not one of ours
-          const record = await this.convertLineToRecord(line)
-          records.push(record)
-        }
+    const updatedRecord: Record = {
+      id: existingRecord.id,
+      guid: recordGuid,
+      zoneId: existingRecord.zoneId,
+      type: recordUpdates.type,
+      content: recordUpdates.content,
+      domain: recordUpdates.domain,
+    };
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const effectedRows = await this.recordRepository.update(
+        recordGuid,
+        updatedRecord,
+        queryRunner,
+      );
+      if (effectedRows <= 0) {
+        throw new NotFoundException(
+          'Record To Update Was Not Found. Changes Have Not Been Applied',
+        );
       }
-    }
-    
-    return records
 
+      await queryRunner.commitTransaction();
+      await queryRunner.release();
+      return await this.findOne(recordGuid);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
+      throw error;
+    }
   }
 
-  
-  async findOne(zoneName: string, hash: string): Promise<Record> {
-    if(await FileUtils.fileExists(`${this.zoneFolderRoot}/db.${zoneName}.d/db.${hash}`)){
-      const lineReader = await FileUtils.getLineReaderOfFile(`${this.zoneFolderRoot}/db.${zoneName}.d/db.${hash}`)
-      for await (const line of lineReader){
-        // if it does have $ORIGIN in it, then its not one of ours
-        if(!line.includes("$ORIGIN")){
-          
-          const cleanLine = line.trim().replaceAll(/\s+/g, " ")
-          const recordHash = await this.generateHashForEntry(cleanLine)
-  
-          if(recordHash == hash){
-            const components = cleanLine.split(" ")
-  
-            const record = new Record()
-            record.domain = components[0]
-            record.type = components[2]
-            record.value = components[3]
-            record.hash = recordHash
-  
-            lineReader.close()
-            return record
-  
-          }
-        }
-      }
-    }
-    
-    throw new NotFoundException("Record Not Found")
-  }
+  async remove(recordGuid: string): Promise<Record> {
+    const existingRecord = await this.findOne(recordGuid);
 
-  async update(zoneName: string, existingRecordHash: string, record: UpdateRecordDto): Promise<Record> {
-
-    if(await FileUtils.fileExists(`${this.zoneFolderRoot}/db.${zoneName}.d/db.${existingRecordHash}`)){
-      const updatedRecord = await this.create(zoneName, { domain: record.domain, type: record.type, value: record.value})
-      await this.remove(zoneName, existingRecordHash)
-
-      return updatedRecord
+    const effectedRows = await this.recordRepository.delete(recordGuid);
+    if (effectedRows <= 0) {
+      throw new NotFoundException(
+        'Record To Delete Was Not Found. Changes Have Not Been Applied',
+      );
     }
 
-    throw new NotFoundException("Record To Update Was Not Found. Changes Have Not Been Applied")
-  }
-
-  async remove(zoneName: string, existingRecordHash: string): Promise<Record> {
-
-    if(await FileUtils.fileExists(`${this.zoneFolderRoot}/db.${zoneName}.d/db.${existingRecordHash}`)){
-      const recordDeleted = await this.findOne(zoneName, existingRecordHash)
-      await fsp.rm(`${this.zoneFolderRoot}/db.${zoneName}.d/db.${existingRecordHash}`)
-      return recordDeleted
-    }
-
-    throw new NotFoundException("Record To Delete Was Not Found. Changes Have Not Been Applied")
+    return existingRecord;
   }
 }
