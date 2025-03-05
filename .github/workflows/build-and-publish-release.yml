@@ -54,7 +54,7 @@ jobs:
           uses: docker/build-push-action@v4.0.0
           id: push
           with:
-            context: Dockerfile.app
+            context: .
             push: true
             visibility: public
             tags: ${{ steps.meta.outputs.tags }}
