@@ -1,23 +1,15 @@
 import {
-  BadRequestException,
   Injectable,
-  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateRecordDto } from './dto/create-record.dto';
 import { UpdateRecordDto } from './dto/update-record.dto';
 import { Record } from './entities/record.entity';
-import * as crypto from 'crypto';
-import { FileUtils } from 'src/utils/fileutils';
-import { Constants } from 'src/utils/constants';
-import * as fsp from 'fs/promises';
-import { createWriteStream } from 'fs';
-import { StringUtils } from 'src/utils/stringutils';
 import { RecordRepository } from './record.repository';
-import { UUIUtils } from 'src/utils/uuidutils';
-import { ZoneRepository } from 'src/zone/zone.repository';
-import { DataSource, Table } from 'typeorm';
+import { UUIUtils } from '../utils/uuidutils';
+import { ZoneRepository } from '../zone/zone.repository';
+import { DataSource } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 
 @Injectable()

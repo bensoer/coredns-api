@@ -9,15 +9,11 @@ import { CreateZoneDto } from './dto/create-zone.dto';
 import { UpdateZoneDto } from './dto/update-zone.dto';
 import { ConfigService } from '@nestjs/config';
 import * as fs from 'fs/promises';
-import { createReadStream, Dirent, createWriteStream } from 'fs';
-import * as readline from 'readline/promises';
 import { Zone } from './entities/zone.entity';
-import { Constants } from 'src/utils/constants';
-import { StringUtils } from 'src/utils/stringutils';
-import { FileUtils } from 'src/utils/fileutils';
-import { UUIUtils } from 'src/utils/uuidutils';
+import { UUIUtils } from '../utils/uuidutils';
 import { ZoneRepository } from './zone.repository';
 import { DataSource } from 'typeorm';
+import { InjectDataSource } from '@nestjs/typeorm';
 
 @Injectable()
 export class ZoneService {
@@ -30,8 +26,9 @@ export class ZoneService {
   constructor(
     private zoneRepository: ZoneRepository,
     configService: ConfigService,
-    private dataSource: DataSource,
+    @InjectDataSource() private dataSource: DataSource,
   ) {
+
     this.configurationFolderRoot = configService.getOrThrow<string>(
       'COREDNS_CONFIG_ROOT',
     );

@@ -5,7 +5,7 @@ import { RecordProfile } from './automap/record.profile';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Record } from './entities/record.entity';
 import { RecordRepository } from './record.repository';
-import { ZoneModule } from 'src/zone/zone.module';
+import { ZoneModule } from '../zone/zone.module';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Record]), ZoneModule],

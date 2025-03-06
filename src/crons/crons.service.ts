@@ -1,12 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as fsp from 'fs/promises';
-import { Constants } from 'src/utils/constants';
 import { createWriteStream } from 'fs';
-import { FileUtils } from 'src/utils/fileutils';
-import { ZoneService } from 'src/zone/zone.service';
-import { RecordService } from 'src/record/record.service';
-import { DataSource } from 'typeorm';
+import { FileUtils } from '../utils/fileutils';
+import { ZoneService } from '../zone/zone.service';
+import { RecordService } from '../record/record.service';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()

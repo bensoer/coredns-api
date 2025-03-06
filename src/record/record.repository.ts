@@ -1,6 +1,6 @@
-import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Record } from './entities/record.entity';
-import { DataSource, QueryRunner, Repository, Table } from 'typeorm';
+import { QueryRunner, Repository } from 'typeorm';
 import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()

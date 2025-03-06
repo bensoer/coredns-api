@@ -4,13 +4,12 @@ import {
   createMap,
   forMember,
   mapFrom,
-  typeConverter,
 } from '@automapper/core';
 import { AutomapperProfile, InjectMapper } from '@automapper/nestjs';
 import { Injectable } from '@nestjs/common';
 import { GetZoneDto } from '../dto/get-zone.dto';
 import { Zone } from '../entities/zone.entity';
-import { StringUtils } from 'src/utils/stringutils';
+import { StringUtils } from '../../utils/stringutils';
 
 @Injectable()
 export class ZoneProfile extends AutomapperProfile {

@@ -1,6 +1,5 @@
 import { AutoMap } from '@automapper/classes';
-import { Zone } from 'src/zone/entities/zone.entity';
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('record')
 export class Record {

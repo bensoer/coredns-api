@@ -11,7 +11,6 @@ import { LoggerMiddleware } from './logger/logger.middleware';
 import { ZoneModule } from './zone/zone.module';
 import { RecordModule } from './record/record.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Constants } from './utils/constants';
 import { CronsModule } from './crons/crons.module';
 import { ScheduleModule } from '@nestjs/schedule';
 

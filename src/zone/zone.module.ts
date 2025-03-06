@@ -5,8 +5,7 @@ import { ZoneProfile } from './automap/zone.profile';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Zone } from './entities/zone.entity';
 import { ZoneRepository } from './zone.repository';
-import { FileUtils } from 'src/utils/fileutils';
-import { Constants } from 'src/utils/constants';
+import { FileUtils } from '../utils/fileutils';
 import * as fsp from 'fs/promises';
 import { ConfigService } from '@nestjs/config';
 @Module({
