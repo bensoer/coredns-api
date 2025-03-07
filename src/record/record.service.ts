@@ -1,5 +1,7 @@
 import {
+  ConflictException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -9,7 +11,7 @@ import { Record } from './entities/record.entity';
 import { RecordRepository } from './record.repository';
 import { UUIUtils } from '../utils/uuidutils';
 import { ZoneRepository } from '../zone/zone.repository';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityNotFoundError } from 'typeorm';
 import { InjectDataSource } from '@nestjs/typeorm';
 
 @Injectable()
@@ -23,27 +25,48 @@ export class RecordService {
   ) {}
 
   async create(zoneGuid: string, newRecord: CreateRecordDto): Promise<Record> {
-    const zone = await this.zoneRepository.read(zoneGuid);
 
-    const record: Record = {
-      guid: UUIUtils.generateUUID(),
-      zoneId: zone.id,
-      domain: newRecord.domain,
-      type: newRecord.type,
-      content: newRecord.content,
-    };
+    try{
+      const zone = await this.zoneRepository.read(zoneGuid);
 
-    record.id = await this.recordRepository.insert(record);
+      const record: Record = {
+        guid: UUIUtils.generateUUID(),
+        zoneId: zone.id,
+        domain: newRecord.domain,
+        type: newRecord.type,
+        content: newRecord.content,
+      };
+  
+      record.id = await this.recordRepository.insert(record);
+  
+      return record;
+    }catch(error){
 
-    return record;
+      if(error instanceof EntityNotFoundError){
+        throw new NotFoundException("Zone For Record Not Found")
+      }
+
+      // else we assume this is an error from the insert failing
+      throw new ConflictException("Record Already Exists")
+    }
+    
   }
 
   async findAll(zoneGuid: string): Promise<Array<Record>> {
-    const zone = await this.zoneRepository.read(zoneGuid);
-    const { totalItems, entities } = await this.recordRepository.readAllOfZone(
-      zone.id,
-    );
-    return entities;
+    try{
+      const zone = await this.zoneRepository.read(zoneGuid);
+      const { totalItems, entities } = await this.recordRepository.readAllOfZone(
+        zone.id,
+      );
+      return entities;
+    }catch(error){
+      if(error instanceof EntityNotFoundError){
+        throw new NotFoundException("Zone For Record Not Found")
+      }
+
+      throw new InternalServerErrorException(error)
+    }
+    
   }
 
   async findOne(recordGuid: string): Promise<Record> {
