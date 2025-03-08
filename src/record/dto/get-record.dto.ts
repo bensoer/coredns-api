@@ -4,7 +4,7 @@ import { ApiProperty } from '@nestjs/swagger';
 export class GetRecordDto {
   @AutoMap()
   @ApiProperty()
-  hash: string;
+  guid: string;
 
   @AutoMap()
   @ApiProperty()
@@ -16,5 +16,5 @@ export class GetRecordDto {
 
   @AutoMap()
   @ApiProperty()
-  value: string;
+  content: string;
 }

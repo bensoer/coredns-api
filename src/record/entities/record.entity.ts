@@ -9,6 +9,7 @@ export class Record {
   @Column()
   zoneId: number;
 
+  @AutoMap()
   @Column()
   guid: string;
 

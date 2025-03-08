@@ -8,8 +8,9 @@ import { RecordRepository } from './record.repository';
 import { Zone } from '../zone/entities/zone.entity';
 import { faker } from '@faker-js/faker';
 import { CreateRecordDto } from './dto/create-record.dto';
-import { EntityNotFoundError } from 'typeorm';
+import { EntityNotFoundError, QueryRunner } from 'typeorm';
 import { ConflictException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { UpdateRecordDto } from './dto/update-record.dto';
 
 describe('RecordService', () => {
   let service: RecordService;
@@ -84,6 +85,12 @@ describe('RecordService', () => {
   })
 
   const fakeCreateRecordDto = (): CreateRecordDto => ({
+    domain: faker.internet.domainName(),
+    type: faker.string.fromCharacters(['A', 'CNAME', 'TXT', 'MS', 'NS', 'SRV']),
+    content: faker.string.alphanumeric()
+  })
+
+  const fakeUpdateRecordDto = (): UpdateRecordDto => ({
     domain: faker.internet.domainName(),
     type: faker.string.fromCharacters(['A', 'CNAME', 'TXT', 'MS', 'NS', 'SRV']),
     content: faker.string.alphanumeric()
@@ -235,5 +242,130 @@ describe('RecordService', () => {
     expect(zoneRepository.read).toHaveBeenCalledWith(zone.guid)
     expect(recordRepository.readAllOfZone).toHaveBeenCalledTimes(1)
     expect(recordRepository.readAllOfZone).toHaveBeenCalledWith(zone.id)
+  })
+
+  it('findOne should succeed', async () => {
+
+    const record = fakeRecord()
+
+    jest.spyOn(recordRepository, 'read').mockImplementation(async (recordGuid: string) =>  record)
+
+    const foundRecord = await service.findOne(record.guid)
+
+    expect(foundRecord).toEqual(record)
+
+    expect(recordRepository.read).toHaveBeenCalledTimes(1)
+    expect(recordRepository.read).toHaveBeenCalledWith(record.guid)
+    
+  })
+
+  it('findOne should 404 if not found', async () => {
+
+    const record = fakeRecord()
+
+    jest.spyOn(recordRepository, 'read').mockImplementation(async (recordGuid: string) =>  {throw new EntityNotFoundError(Record, undefined)})
+
+    try{
+      await service.findOne(record.guid)
+      fail("This should have thrown an exception")
+    }catch(error){
+      expect(error).toEqual(new NotFoundException('Record Not Found'))
+    }
+
+    expect(recordRepository.read).toHaveBeenCalledTimes(1)
+    expect(recordRepository.read).toHaveBeenCalledWith(record.guid)
+    
+  })
+
+  it('update should succeed', async () => {
+
+    const record = fakeRecord()
+    const recordUpdates = fakeUpdateRecordDto()
+
+    jest.spyOn(service, 'findOne').mockImplementation(async(recordGuid:string) => record)
+    jest.spyOn(recordRepository, 'update').mockImplementation(async(recordGuid:string, updatedRecord:Record, queryRunner?:QueryRunner) => 1)
+
+    const updatedRecord = await service.update(record.guid, recordUpdates)
+
+    expect(updatedRecord).toEqual(record)
+
+
+    expect(recordRepository.update).toHaveBeenCalledTimes(1)
+    expect(service.findOne).toHaveBeenCalledTimes(2)
+  })
+
+  it('update should 404 if update fails', async () => {
+
+    const record = fakeRecord()
+    const recordUpdates = fakeUpdateRecordDto()
+
+    jest.spyOn(service, 'findOne').mockImplementation(async(recordGuid:string) => record)
+    jest.spyOn(recordRepository, 'update').mockImplementation(async(recordGuid:string, updatedRecord:Record, queryRunner?:QueryRunner) => 0)
+
+    try{
+      await service.update(record.guid, recordUpdates)
+      fail("This should have thrown an exception")
+    }catch(error){
+      expect(error).toEqual(new NotFoundException('Record To Update Was Not Found. Changes Have Not Been Applied'))
+    }
+    
+    expect(recordRepository.update).toHaveBeenCalledTimes(1)
+    expect(service.findOne).toHaveBeenCalledTimes(1)
+  })
+
+  it('remove should succeed', async () => {
+
+    const record = fakeRecord()
+
+    jest.spyOn(service, 'findOne').mockImplementation(async(recordGuid:string) => record)
+    jest.spyOn(recordRepository, 'delete').mockImplementation(async(recordGuid:string ) => 1)
+
+    const removedRecord = await service.remove(record.guid)
+
+    expect(removedRecord).toEqual(record)
+
+    expect(recordRepository.delete).toHaveBeenCalledTimes(1)
+    expect(recordRepository.delete).toHaveBeenCalledWith(record.guid)
+    expect(service.findOne).toHaveBeenCalledTimes(1)
+    expect(service.findOne).toHaveBeenCalledWith(record.guid)
+  })
+
+  it('remove should 404 if can\t find record', async () => {
+
+    const record = fakeRecord()
+
+    jest.spyOn(service, 'findOne').mockImplementation(async(recordGuid:string) => { throw new NotFoundException('Record Not Found')})
+    jest.spyOn(recordRepository, 'delete').mockImplementation(async(recordGuid:string ) => 1)
+
+    try{
+      await service.remove(record.guid)
+      fail("Exception should have been thrown")
+    }catch(error){
+      expect(error).toEqual(new NotFoundException('Record Not Found'))
+    }
+
+    expect(recordRepository.delete).toHaveBeenCalledTimes(0)
+    expect(service.findOne).toHaveBeenCalledTimes(1)
+    expect(service.findOne).toHaveBeenCalledWith(record.guid)
+  })
+
+  it('remove should 404 if delete does not remove any records', async () => {
+
+    const record = fakeRecord()
+
+    jest.spyOn(service, 'findOne').mockImplementation(async(recordGuid:string) => record )
+    jest.spyOn(recordRepository, 'delete').mockImplementation(async(recordGuid:string ) => 0)
+
+    try{
+      await service.remove(record.guid)
+      fail("Exception should have been thrown")
+    }catch(error){
+      expect(error).toEqual(new NotFoundException('Record To Delete Was Not Found. Changes Have Not Been Applied'))
+    }
+
+    expect(recordRepository.delete).toHaveBeenCalledTimes(1)
+    expect(recordRepository.delete).toHaveBeenCalledWith(record.guid)
+    expect(service.findOne).toHaveBeenCalledTimes(1)
+    expect(service.findOne).toHaveBeenCalledWith(record.guid)
   })
 });
