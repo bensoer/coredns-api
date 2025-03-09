@@ -55,6 +55,8 @@ Make sure to grab the latest release version of the Core DNS API container: http
 
 You can also see an example docker-compose.yaml within the `example` folder of this repo
 
+See the [Configuration Options](#configuration-options) section for all `environment` values.
+
 
 # Usage
 The purpose of this API is to provide an API endpoint to CRUD management of your DNS Zones and Routes. Once your CoreDNS instance and CoreDNS API instance is deployed you can view the OpenAPI docs located at the `/docs` endpoint of the CoreDNS API.
@@ -78,6 +80,12 @@ CoreDNS API is a Nodejs app using the Nestjs framework. If you would like to dig
     COREDNS_CONFIG_ROOT=/etc/coredns
     ```
 5. Run `docker compose up` . This will build the docker container and then setup the dev configuration
+6. (Optional / Beta ) You can generate code documentation by running:
+   ```bash
+   npm run compodoc
+   ```
+   This will generate static HTML providing an overview of class dependencies, methods and any commented documentation provided. Generated HTML will appear in a new folder `compodocs`. Open the `index.html` file with a browser to view and navigate.
+
 
 **Note:** If you run into issues or errors with `npm` installing packages, you may need to pass `--legacy-peer-deps`. This project uses Nestjs v10 and not all modules have officially updated or released compatible dependencies. They all work, they just haven't updated their `package.json` versions to allow the new version of Nestjs
 
@@ -91,8 +99,9 @@ All of the environment configuration values are as follows:
 | `ENABLED_DEBUG_LOGGING` | No | Enabled more verbose logging output | `false`
 | `SWAGGER_PORT` | No | On the Swagger docs page, specify what port to hit to test calls | IF `WITH_SSL` is `false` - `80` . IF `WITH_SSL` is `true` - `443` |
 | `WITH_SSL` | No | On the Swagger docs page, specify whether to use HTTP or HTTPS when testing calls | `false` |
-| `NODE_ENV` | No | Specify what environment is booting. The container sets this value to `production`. For docker-compose setups to work this value must be overridden as `development` otherwise `npm` will not install all dependencies correctly | `production` |
+| `NODE_ENV` | No | Specify what environment is booting. The container sets this value to `production`. For dev environments with docker-compose, this value must be overridden as `development` otherwise `npm` will not install all dependencies correctly | `production` |
 | `COREDNS_CONFIG_ROOT` | Yes | Specify where the root folder is for all configuration. CoreDNS API will store its SQLite directory in here along with all Corefiles and configurations. Set this folder path to coordinate working with your CoreDNS container | N/A |
+| `DNS_FORWARD_ADDRESSES` | No | Override where CoreDNS will send requests it does not know to. This value can only be set on first startup. Following startups it is ingored. | `8.8.8.8 8.8.4.4` |
 
 ## Modifying the `Corefile`
 The CoreDNS API handles all modifications necessary for `Corefile` configuration. Using the `import` plugin, its able to dynamically generate configuration. If you want to add your own custom logic, you can do this by adding it to the generated root `Corefile` located within the folder, set by the `COREDNS_CONFIG_ROOT` environment variable, within the container. Within it you will find the following:
