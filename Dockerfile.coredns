@@ -10,7 +10,7 @@ RUN git clone https://github.com/coredns/coredns.git /coredns && \
     #go generate && go build -o coredns
 
 
-FROM debian:bookworm-20250203-slim AS production
+FROM debian:bookworm-20250224-slim AS production
 COPY --from=build /coredns/coredns .
 RUN  mkdir -p /etc/coredns && touch /etc/coredns/Corefile
 
