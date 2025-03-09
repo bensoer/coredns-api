@@ -80,6 +80,12 @@ CoreDNS API is a Nodejs app using the Nestjs framework. If you would like to dig
     COREDNS_CONFIG_ROOT=/etc/coredns
     ```
 5. Run `docker compose up` . This will build the docker container and then setup the dev configuration
+6. (Optional / Beta ) You can generate code documentation by running:
+   ```bash
+   npm run compodoc
+   ```
+   This will generate static HTML providing an overview of class dependencies, methods and any commented documentation provided. Generated HTML will appear in a new folder `compodocs`. Open the `index.html` file with a browser to view and navigate.
+
 
 **Note:** If you run into issues or errors with `npm` installing packages, you may need to pass `--legacy-peer-deps`. This project uses Nestjs v10 and not all modules have officially updated or released compatible dependencies. They all work, they just haven't updated their `package.json` versions to allow the new version of Nestjs
 
