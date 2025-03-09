@@ -24,5 +24,11 @@ jobs:
                 cache-dependency-path: package-lock.json
             - name: Install Server Dependencies
               run: 'npm ci --legacy-peer-deps'
+            - name: 'Check Style Formatting'
+              run: 'npm run format -- --check'
+            - name: 'Check Linting'
+              run: 'npm run lint'
             - name: Run Server Compile Check
               run: 'npm run build'
+            - name: 'Run Unit Tests'
+              run: 'npm run test'
