@@ -28,7 +28,6 @@ export class ZoneService {
     configService: ConfigService,
     @InjectDataSource() private dataSource: DataSource,
   ) {
-
     this.configurationFolderRoot = configService.getOrThrow<string>(
       'COREDNS_CONFIG_ROOT',
     );
@@ -75,8 +74,8 @@ ${createZoneDto.hostname}:53 {
   }
 
   async findAll(): Promise<Array<Zone>> {
-    const { totalItems, entities } = await this.zoneRepository.readAll();
-    return entities;
+    const pageObject = await this.zoneRepository.readAll();
+    return pageObject.entities;
   }
 
   async zoneExists(zoneHostname: string): Promise<boolean> {

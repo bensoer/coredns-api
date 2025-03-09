@@ -27,6 +27,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     switch (status) {
       case 400:
+      case 409:
         payload.message = 'Invalid Request';
         break;
       case 404:

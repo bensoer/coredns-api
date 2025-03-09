@@ -6,10 +6,6 @@ import helmet from 'helmet';
 import { ConfigService } from '@nestjs/config';
 import { EnvironmentUtils } from './utils/environmentutils';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import * as fsp from 'fs/promises';
-import * as fs from 'fs';
-import { Constants } from './utils/constants';
-import { FileUtils } from './utils/fileutils';
 
 async function bootstrap() {
   // 1) Create and configure Nest app

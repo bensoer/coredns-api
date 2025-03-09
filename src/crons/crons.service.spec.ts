@@ -8,27 +8,22 @@ describe('CronsService', () => {
   let service: CronsService;
 
   beforeEach(async () => {
-
-    const zoneService = {}
-    const recordService = {}
+    const zoneService = {};
+    const recordService = {};
 
     const module: TestingModule = await Test.createTestingModule({
-      imports: [ 
+      imports: [
         ConfigModule.forFeature(() => ({
-          COREDNS_CONFIG_ROOT: './config'
-        }))
+          COREDNS_CONFIG_ROOT: './config',
+        })),
       ],
-      providers: [
-        CronsService,
-        ZoneService,
-        RecordService
-      ],
+      providers: [CronsService, ZoneService, RecordService],
     })
-    .overrideProvider(ZoneService)
-    .useValue(zoneService)
-    .overrideProvider(RecordService)
-    .useValue(recordService)
-    .compile();
+      .overrideProvider(ZoneService)
+      .useValue(zoneService)
+      .overrideProvider(RecordService)
+      .useValue(recordService)
+      .compile();
 
     service = module.get<CronsService>(CronsService);
   });

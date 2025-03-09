@@ -24,6 +24,7 @@ export class Zone {
   @PrimaryGeneratedColumn()
   id?: number;
 
+  @AutoMap()
   @Column()
   guid: string;
 

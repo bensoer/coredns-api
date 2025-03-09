@@ -4,6 +4,10 @@ import { ApiProperty } from '@nestjs/swagger';
 export class GetZoneDto {
   @AutoMap()
   @ApiProperty()
+  guid: string;
+
+  @AutoMap()
+  @ApiProperty()
   hostname: string;
 
   @AutoMap()

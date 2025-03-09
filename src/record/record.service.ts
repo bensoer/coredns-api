@@ -25,8 +25,7 @@ export class RecordService {
   ) {}
 
   async create(zoneGuid: string, newRecord: CreateRecordDto): Promise<Record> {
-
-    try{
+    try {
       const zone = await this.zoneRepository.read(zoneGuid);
 
       const record: Record = {
@@ -36,37 +35,32 @@ export class RecordService {
         type: newRecord.type,
         content: newRecord.content,
       };
-  
-      record.id = await this.recordRepository.insert(record);
-  
-      return record;
-    }catch(error){
 
-      if(error instanceof EntityNotFoundError){
-        throw new NotFoundException("Zone For Record Not Found")
+      record.id = await this.recordRepository.insert(record);
+
+      return record;
+    } catch (error) {
+      if (error instanceof EntityNotFoundError) {
+        throw new NotFoundException('Zone For Record Not Found');
       }
 
       // else we assume this is an error from the insert failing
-      throw new ConflictException("Record Already Exists")
+      throw new ConflictException('Record Already Exists');
     }
-    
   }
 
   async findAll(zoneGuid: string): Promise<Array<Record>> {
-    try{
+    try {
       const zone = await this.zoneRepository.read(zoneGuid);
-      const { totalItems, entities } = await this.recordRepository.readAllOfZone(
-        zone.id,
-      );
-      return entities;
-    }catch(error){
-      if(error instanceof EntityNotFoundError){
-        throw new NotFoundException("Zone For Record Not Found")
+      const pageObject = await this.recordRepository.readAllOfZone(zone.id);
+      return pageObject.entities;
+    } catch (error) {
+      if (error instanceof EntityNotFoundError) {
+        throw new NotFoundException('Zone For Record Not Found');
       }
 
-      throw new InternalServerErrorException(error)
+      throw new InternalServerErrorException(error);
     }
-    
   }
 
   async findOne(recordGuid: string): Promise<Record> {
