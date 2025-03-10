@@ -1,4 +1,4 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Inject, Module, OnModuleInit } from '@nestjs/common';
 import { ZoneService } from './zone.service';
 import { ZoneController } from './zone.controller';
 import { ZoneProfile } from './automap/zone.profile';
@@ -7,9 +7,9 @@ import { Zone } from './entities/zone.entity';
 import { ZoneRepository } from './zone.repository';
 import { FileUtils } from '../utils/fileutils';
 import * as fsp from 'fs/promises';
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 @Module({
-  imports: [TypeOrmModule.forFeature([Zone])],
+  imports: [TypeOrmModule.forFeature([Zone]), ConfigModule],
   controllers: [ZoneController],
   providers: [ZoneService, ZoneProfile, ZoneRepository],
   exports: [ZoneRepository, ZoneService],
@@ -17,7 +17,7 @@ import { ConfigService } from '@nestjs/config';
 export class ZoneModule implements OnModuleInit {
   private readonly COREDNS_CONFIG_ROOT: string;
 
-  constructor(private configService: ConfigService) {
+  constructor(@Inject() private configService: ConfigService) {
     this.COREDNS_CONFIG_ROOT = configService.getOrThrow<string>(
       'COREDNS_CONFIG_ROOT',
     );

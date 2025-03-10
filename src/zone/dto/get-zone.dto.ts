@@ -33,4 +33,8 @@ export class GetZoneDto {
   @AutoMap()
   @ApiProperty()
   expiry: number;
+
+  @AutoMap()
+  @ApiProperty()
+  serial: number;
 }

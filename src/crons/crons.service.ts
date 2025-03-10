@@ -64,6 +64,7 @@ export class CronsService {
     }
 
     this.zoneService.findAll();
+    // NOTE: Zones contact emails will contain '@' character in them - which we need to remove before writing to file
 
     // Need to wrap everything in a try/catch so that IF there is any error, the lock will release
     try {

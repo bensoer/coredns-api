@@ -23,13 +23,6 @@ export class ZoneProfile extends AutomapperProfile {
         mapper,
         Zone,
         GetZoneDto,
-        // If contact has no @ sign for the email. Replace the first '.' we run into with the @
-        forMember(
-          (destination) => destination.contact,
-          mapFrom((source) =>
-            StringUtils.putAtBack(StringUtils.trimFromEnd(source.contact, '.')),
-          ),
-        ),
         forMember(
           (destination) => destination.hostname,
           mapFrom((source) => StringUtils.trimFromEnd(source.hostname, '.')),
