@@ -7,14 +7,14 @@ import { ZoneService } from '../zone/zone.service';
 import { RecordRepository } from './record.repository';
 import { Zone } from '../zone/entities/zone.entity';
 import { faker } from '@faker-js/faker';
-import { CreateRecordDto } from './dto/create-record.dto';
 import { EntityNotFoundError, QueryRunner } from 'typeorm';
 import {
   ConflictException,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { UpdateRecordDto } from './dto/update-record.dto';
+import { FakeZone } from '../../test/fake/zone.fake';
+import { FakeRecord } from '../../test/fake/record.fake';
 
 describe('RecordService', () => {
   let service: RecordService;
@@ -68,46 +68,13 @@ describe('RecordService', () => {
     jest.clearAllMocks();
   });
 
-  const fakeZone = (guidOverride?: string): Zone => ({
-    guid: guidOverride != undefined ? guidOverride : faker.string.uuid(),
-    hostname: faker.string.alphanumeric(),
-    servername: faker.string.alphanumeric(),
-    contact: faker.string.alpha(),
-    serial: faker.string.numeric(10),
-    ttl: faker.number.int(),
-    refresh: faker.number.int(),
-    retry: faker.number.int(),
-    expiry: faker.number.int(),
-    id: faker.number.int(),
-  });
-
-  const fakeRecord = (zoneIdOverride?: number): Record => ({
-    zoneId: zoneIdOverride != undefined ? zoneIdOverride : faker.number.int(),
-    guid: faker.string.uuid(),
-    domain: faker.internet.domainName(),
-    type: faker.string.fromCharacters(['A', 'CNAME', 'TXT', 'MS', 'NS', 'SRV']),
-    content: faker.string.alphanumeric(),
-  });
-
-  const fakeCreateRecordDto = (): CreateRecordDto => ({
-    domain: faker.internet.domainName(),
-    type: faker.string.fromCharacters(['A', 'CNAME', 'TXT', 'MS', 'NS', 'SRV']),
-    content: faker.string.alphanumeric(),
-  });
-
-  const fakeUpdateRecordDto = (): UpdateRecordDto => ({
-    domain: faker.internet.domainName(),
-    type: faker.string.fromCharacters(['A', 'CNAME', 'TXT', 'MS', 'NS', 'SRV']),
-    content: faker.string.alphanumeric(),
-  });
-
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
   it('insert should be successfull', async () => {
-    const zone = fakeZone();
-    const createRecordDto = fakeCreateRecordDto();
+    const zone = FakeZone.fakeZone();
+    const createRecordDto = FakeRecord.fakeCreateRecordDto();
 
     jest
       .spyOn(zoneRepository, 'read')
@@ -132,8 +99,8 @@ describe('RecordService', () => {
   });
 
   it('insert should 404 if zone does not exist', async () => {
-    const zone = fakeZone();
-    const createRecordDto = fakeCreateRecordDto();
+    const zone = FakeZone.fakeZone();
+    const createRecordDto = FakeRecord.fakeCreateRecordDto();
 
     jest
       .spyOn(zoneRepository, 'read')
@@ -157,8 +124,8 @@ describe('RecordService', () => {
   });
 
   it('insert should 409 if record already exists', async () => {
-    const zone = fakeZone();
-    const createRecordDto = fakeCreateRecordDto();
+    const zone = FakeZone.fakeZone();
+    const createRecordDto = FakeRecord.fakeCreateRecordDto();
 
     jest
       .spyOn(zoneRepository, 'read')
@@ -182,11 +149,11 @@ describe('RecordService', () => {
   });
 
   it('findAll should succeed', async () => {
-    const zone = fakeZone();
+    const zone = FakeZone.fakeZone();
     let recordNumber = faker.number.int(25);
     const records = new Array<Record>();
     while (recordNumber > 0) {
-      records.push(fakeRecord(zone.id));
+      records.push(FakeRecord.fakeRecord(zone.id));
       recordNumber--;
     }
 
@@ -213,11 +180,11 @@ describe('RecordService', () => {
   });
 
   it('findAll should 404 if zone does not exist', async () => {
-    const zone = fakeZone();
+    const zone = FakeZone.fakeZone();
     let recordNumber = faker.number.int(25);
     const records = new Array<Record>();
     while (recordNumber > 0) {
-      records.push(fakeRecord(zone.id));
+      records.push(FakeRecord.fakeRecord(zone.id));
       recordNumber--;
     }
 
@@ -236,7 +203,11 @@ describe('RecordService', () => {
       await service.findAll(zone.guid);
       fail('This should have thrown an exception');
     } catch (error) {
-      expect(error).toEqual(new NotFoundException('Zone For Record Not Found'));
+      expect(error).toEqual(
+        new NotFoundException(
+          'The Zone We Are Fetching All Records For Does Not Exist',
+        ),
+      );
     }
 
     expect(zoneRepository.read).toHaveBeenCalledTimes(1);
@@ -245,11 +216,11 @@ describe('RecordService', () => {
   });
 
   it('findAll should 500 if readAllOfZone Repository Call Fails', async () => {
-    const zone = fakeZone();
+    const zone = FakeZone.fakeZone();
     let recordNumber = faker.number.int(25);
     const records = new Array<Record>();
     while (recordNumber > 0) {
-      records.push(fakeRecord(zone.id));
+      records.push(FakeRecord.fakeRecord(zone.id));
       recordNumber--;
     }
 
@@ -280,7 +251,7 @@ describe('RecordService', () => {
   });
 
   it('findOne should succeed', async () => {
-    const record = fakeRecord();
+    const record = FakeRecord.fakeRecord();
 
     jest
       .spyOn(recordRepository, 'read')
@@ -295,7 +266,7 @@ describe('RecordService', () => {
   });
 
   it('findOne should 404 if not found', async () => {
-    const record = fakeRecord();
+    const record = FakeRecord.fakeRecord();
 
     jest
       .spyOn(recordRepository, 'read')
@@ -315,8 +286,8 @@ describe('RecordService', () => {
   });
 
   it('update should succeed', async () => {
-    const record = fakeRecord();
-    const recordUpdates = fakeUpdateRecordDto();
+    const record = FakeRecord.fakeRecord();
+    const recordUpdates = FakeRecord.fakeUpdateRecordDto();
 
     jest
       .spyOn(service, 'findOne')
@@ -340,8 +311,8 @@ describe('RecordService', () => {
   });
 
   it('update should 404 if update fails', async () => {
-    const record = fakeRecord();
-    const recordUpdates = fakeUpdateRecordDto();
+    const record = FakeRecord.fakeRecord();
+    const recordUpdates = FakeRecord.fakeUpdateRecordDto();
 
     jest
       .spyOn(service, 'findOne')
@@ -372,7 +343,7 @@ describe('RecordService', () => {
   });
 
   it('remove should succeed', async () => {
-    const record = fakeRecord();
+    const record = FakeRecord.fakeRecord();
 
     jest
       .spyOn(service, 'findOne')
@@ -392,7 +363,7 @@ describe('RecordService', () => {
   });
 
   it('remove should 404 if can\t find record', async () => {
-    const record = fakeRecord();
+    const record = FakeRecord.fakeRecord();
 
     jest
       .spyOn(service, 'findOne')
@@ -416,7 +387,7 @@ describe('RecordService', () => {
   });
 
   it('remove should 404 if delete does not remove any records', async () => {
-    const record = fakeRecord();
+    const record = FakeRecord.fakeRecord();
 
     jest
       .spyOn(service, 'findOne')

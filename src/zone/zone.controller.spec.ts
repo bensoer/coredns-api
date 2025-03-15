@@ -13,6 +13,7 @@ import { faker } from '@faker-js/faker/.';
 import { CreateZoneDto } from './dto/create-zone.dto';
 import { GetZoneDto } from './dto/get-zone.dto';
 import { UpdateZoneDto } from './dto/update-zone.dto';
+import { FakeZone } from '../../test/fake/zone.fake';
 
 describe('ZoneController', () => {
   let controller: ZoneController;
@@ -55,45 +56,13 @@ describe('ZoneController', () => {
     classMapper = module.get<Mapper>(getMapperToken());
   });
 
-  const fakeCreateZoneDto = (): CreateZoneDto => ({
-    hostname: faker.internet.domainName(),
-    servername: faker.internet.domainName(),
-    contact: faker.internet.email(),
-    ttl: faker.number.int(),
-    retry: faker.number.int(),
-    expiry: faker.number.int(),
-    refresh: faker.number.int(),
-  });
-
-  const fakeUpdateZoneDto = (): UpdateZoneDto => ({
-    servername: faker.internet.domainName(),
-    contact: faker.internet.email(),
-    ttl: faker.number.int(),
-    retry: faker.number.int(),
-    expiry: faker.number.int(),
-    refresh: faker.number.int(),
-  });
-
-  const fakeZone = (guidOverride?: string): Zone => ({
-    guid: guidOverride != undefined ? guidOverride : faker.string.uuid(),
-    hostname: faker.internet.domainName(),
-    servername: faker.internet.domainName(),
-    contact: faker.internet.email(),
-    serial: faker.string.numeric(10),
-    ttl: faker.number.int(),
-    refresh: faker.number.int(),
-    retry: faker.number.int(),
-    expiry: faker.number.int(),
-    id: faker.number.int(),
-  });
-
   it('should be defined', () => {
     expect(controller).toBeDefined();
   });
 
   it('should create a zone', async () => {
-    const createZoneDto = fakeCreateZoneDto();
-    const zone = fakeZone();
+    const createZoneDto = FakeZone.fakeCreateZoneDto();
+    const zone = FakeZone.fakeZone();
     const zoneAsGetZoneDto = await classMapper.mapAsync(zone, Zone, GetZoneDto);
 
     jest
@@ -113,7 +82,7 @@ describe('ZoneController', () => {
     const zoneCount = faker.number.int({ min: 1, max: 10 });
     const zones = new Array<Zone>();
     for (let i = 0; i < zoneCount; i++) {
-      zones.push(fakeZone());
+      zones.push(FakeZone.fakeZone());
     }
     const zonesAsGetZoneDtos: Array<GetZoneDto> = classMapper.mapArray(
       zones,
@@ -136,7 +105,7 @@ describe('ZoneController', () => {
   });
 
   it('should get a zone', async () => {
-    const zone = fakeZone();
+    const zone = FakeZone.fakeZone();
     const zoneAsGetZoneDto = await classMapper.mapAsync(zone, Zone, GetZoneDto);
 
     jest
@@ -153,8 +122,8 @@ describe('ZoneController', () => {
   });
 
   it('should update a zone', async () => {
-    const zone = fakeZone();
-    const updatedZoneDto = fakeUpdateZoneDto();
+    const zone = FakeZone.fakeZone();
+    const updatedZoneDto = FakeZone.fakeUpdateZoneDto();
     const zoneAsGetZoneDto = await classMapper.mapAsync(zone, Zone, GetZoneDto);
 
     jest
@@ -173,7 +142,7 @@ describe('ZoneController', () => {
   });
 
   it('should delete a record', async () => {
-    const zone = fakeZone();
+    const zone = FakeZone.fakeZone();
     const zoneAsGetZoneDto = await classMapper.mapAsync(zone, Zone, GetZoneDto);
 
     jest

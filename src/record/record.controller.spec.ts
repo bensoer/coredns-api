@@ -11,9 +11,10 @@ import { RecordRepository } from './record.repository';
 import { faker } from '@faker-js/faker/.';
 import { CreateRecordDto } from './dto/create-record.dto';
 import { RecordProfile } from './automap/record.profile';
-import { Zone } from 'src/zone/entities/zone.entity';
 import { GetRecordDto } from './dto/get-record.dto';
 import { UpdateRecordDto } from './dto/update-record.dto';
+import { FakeRecord } from '../../test/fake/record.fake';
+import { FakeZone } from '../../test/fake/zone.fake';
 
 describe('RecordController', () => {
   let controller: RecordController;
@@ -64,48 +65,15 @@ describe('RecordController', () => {
     recordService = module.get<RecordService>(RecordService);
   });
 
-  const fakeRecord = (zoneIdOverride?: number): Record => ({
-    zoneId: zoneIdOverride != undefined ? zoneIdOverride : faker.number.int(),
-    guid: faker.string.uuid(),
-    domain: faker.internet.domainName(),
-    type: faker.string.fromCharacters(['A', 'CNAME', 'TXT', 'MS', 'NS', 'SRV']),
-    content: faker.string.alphanumeric(),
-  });
-
-  const fakeCreateRecordDto = (): CreateRecordDto => ({
-    domain: faker.internet.domainName(),
-    type: faker.string.fromCharacters(['A', 'CNAME', 'TXT', 'MS', 'NS', 'SRV']),
-    content: faker.string.alphanumeric(),
-  });
-
-  const fakeZone = (guidOverride?: string): Zone => ({
-    guid: guidOverride != undefined ? guidOverride : faker.string.uuid(),
-    hostname: faker.string.alphanumeric(),
-    servername: faker.string.alphanumeric(),
-    contact: faker.string.alpha(),
-    serial: faker.string.numeric(10),
-    ttl: faker.number.int(),
-    refresh: faker.number.int(),
-    retry: faker.number.int(),
-    expiry: faker.number.int(),
-    id: faker.number.int(),
-  });
-
-  const fakeUpdateRecordDto = (): UpdateRecordDto => ({
-    domain: faker.internet.domainName(),
-    type: faker.string.fromCharacters(['A', 'CNAME', 'TXT', 'MS', 'NS', 'SRV']),
-    content: faker.string.alphanumeric(),
-  });
-
   it('should be defined', () => {
     expect(controller).toBeDefined();
   });
 
   it('should create a record', async () => {
     const zoneGuid = faker.string.uuid();
-    const createRecordDto = fakeCreateRecordDto();
+    const createRecordDto = FakeRecord.fakeCreateRecordDto();
 
-    const record = fakeRecord();
+    const record = FakeRecord.fakeRecord();
 
     jest
       .spyOn(recordService, 'create')
@@ -129,12 +97,12 @@ describe('RecordController', () => {
   });
 
   it('should get all records of a zone', async () => {
-    const zone = fakeZone();
+    const zone = FakeZone.fakeZone();
 
     const recordCount = faker.number.int({ min: 1, max: 10 });
     const records = new Array<Record>();
     for (let i = 0; i < recordCount; i++) {
-      records.push(fakeRecord(zone.id));
+      records.push(FakeRecord.fakeRecord(zone.id));
     }
     const recordsAsGetRecords = records.map((record) => {
       return {
@@ -162,8 +130,8 @@ describe('RecordController', () => {
   });
 
   it('should get a record', async () => {
-    const zone = fakeZone();
-    const record = fakeRecord(zone.id);
+    const zone = FakeZone.fakeZone();
+    const record = FakeRecord.fakeRecord(zone.id);
     const recordAsGetRecordDto = {
       guid: record.guid,
       domain: record.domain,
@@ -185,9 +153,9 @@ describe('RecordController', () => {
   });
 
   it('should update a record', async () => {
-    const zone = fakeZone();
-    const record = fakeRecord(zone.id);
-    const updateRecordDto = fakeUpdateRecordDto();
+    const zone = FakeZone.fakeZone();
+    const record = FakeRecord.fakeRecord(zone.id);
+    const updateRecordDto = FakeRecord.fakeUpdateRecordDto();
     const recordAsGetRecordDto = {
       guid: record.guid,
       domain: record.domain,
@@ -218,8 +186,8 @@ describe('RecordController', () => {
   });
 
   it('should delete a record', async () => {
-    const zone = fakeZone();
-    const record = fakeRecord(zone.id);
+    const zone = FakeZone.fakeZone();
+    const record = FakeRecord.fakeRecord(zone.id);
     const recordAsGetRecordDto = {
       guid: record.guid,
       domain: record.domain,

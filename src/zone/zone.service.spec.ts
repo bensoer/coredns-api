@@ -4,13 +4,12 @@ import { ConfigModule } from '@nestjs/config';
 import { ZoneRepository } from './zone.repository';
 import { getRepositoryToken, TypeOrmModule } from '@nestjs/typeorm';
 import { Zone } from './entities/zone.entity';
-import { faker } from '@faker-js/faker/.';
 import { EntityNotFoundError, QueryRunner } from 'typeorm';
 import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { UpdateZoneDto } from './dto/update-zone.dto';
+import { FakeZone } from '../../test/fake/zone.fake';
 
 describe('ZoneService', () => {
   let service: ZoneService;
@@ -47,34 +46,12 @@ describe('ZoneService', () => {
     jest.clearAllMocks();
   });
 
-  const fakeZone = (guidOverride?: string): Zone => ({
-    guid: guidOverride != undefined ? guidOverride : faker.string.uuid(),
-    hostname: faker.string.alphanumeric(),
-    servername: faker.string.alphanumeric(),
-    contact: faker.string.alpha(),
-    serial: faker.string.numeric(10),
-    ttl: faker.number.int(),
-    refresh: faker.number.int(),
-    retry: faker.number.int(),
-    expiry: faker.number.int(),
-    id: faker.number.int(),
-  });
-
-  const fakeUpdateZoneDto = (): UpdateZoneDto => ({
-    servername: faker.string.alphanumeric(),
-    contact: faker.string.alphanumeric(),
-    ttl: faker.number.int(),
-    refresh: faker.number.int(),
-    retry: faker.number.int(),
-    expiry: faker.number.int(),
-  });
-
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
   it('findOne should succeed', async () => {
-    const zone = fakeZone();
+    const zone = FakeZone.fakeZone();
 
     jest
       .spyOn(zoneRepository, 'read')
@@ -89,7 +66,7 @@ describe('ZoneService', () => {
   });
 
   it('findOne should 404 if not found', async () => {
-    const zone = fakeZone();
+    const zone = FakeZone.fakeZone();
 
     jest
       .spyOn(zoneRepository, 'read')
@@ -111,8 +88,8 @@ describe('ZoneService', () => {
   });
 
   it('update should succeed', async () => {
-    const zone = fakeZone();
-    const zoneUpdates = fakeUpdateZoneDto();
+    const zone = FakeZone.fakeZone();
+    const zoneUpdates = FakeZone.fakeUpdateZoneDto();
 
     jest
       .spyOn(service, 'findOne')
@@ -136,8 +113,8 @@ describe('ZoneService', () => {
   });
 
   it('update should 404 if update fails', async () => {
-    const zone = fakeZone();
-    const zoneUpdates = fakeUpdateZoneDto();
+    const zone = FakeZone.fakeZone();
+    const zoneUpdates = FakeZone.fakeUpdateZoneDto();
 
     jest
       .spyOn(service, 'findOne')
@@ -168,7 +145,7 @@ describe('ZoneService', () => {
   });
 
   it('remove should succeed', async () => {
-    const zone = fakeZone();
+    const zone = FakeZone.fakeZone();
 
     jest
       .spyOn(service, 'findOne')
@@ -188,7 +165,7 @@ describe('ZoneService', () => {
   });
 
   it('remove should 404 if can\t find record', async () => {
-    const zone = fakeZone();
+    const zone = FakeZone.fakeZone();
 
     jest
       .spyOn(service, 'findOne')
@@ -214,7 +191,7 @@ describe('ZoneService', () => {
   });
 
   it('remove should 404 if delete does not remove any records', async () => {
-    const zone = fakeZone();
+    const zone = FakeZone.fakeZone();
 
     jest
       .spyOn(service, 'findOne')

@@ -56,7 +56,9 @@ export class RecordService {
       return pageObject.entities;
     } catch (error) {
       if (error instanceof EntityNotFoundError) {
-        throw new NotFoundException('Zone For Record Not Found');
+        throw new NotFoundException(
+          'The Zone We Are Fetching All Records For Does Not Exist',
+        );
       }
 
       throw new InternalServerErrorException(error);

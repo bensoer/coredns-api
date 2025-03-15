@@ -1,14 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ZoneModule } from '../src/zone/zone.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Zone } from '../src/zone/entities/zone.entity';
-import { ZoneProfile } from '../src/zone/automap/zone.profile';
-import { getMapperToken } from '@automapper/nestjs';
-import { createMapper } from '@automapper/core';
-import { classes } from '@automapper/classes';
+import { ConfigModule } from '@nestjs/config';
 import { AppModule } from '../src/app.module';
 
 describe('AppController (e2e)', () => {
@@ -19,7 +12,7 @@ describe('AppController (e2e)', () => {
       imports: [
         AppModule,
         ConfigModule.forFeature(() => ({
-            COREDNS_CONFIG_ROOT: './config',
+          COREDNS_CONFIG_ROOT: './config',
         })),
       ],
     }).compile();
@@ -29,12 +22,12 @@ describe('AppController (e2e)', () => {
   });
 
   it('GET /zone', async () => {
-    const response = await request(app.getHttpServer()).get('/zone')
-    expect(response.statusCode).toEqual(200)
-    expect(response.body).toEqual([])
+    const response = await request(app.getHttpServer()).get('/zone');
+    expect(response.statusCode).toEqual(200);
+    expect(response.body).toEqual([]);
   });
 
-  afterAll(async ()=> {
-    await app.close()
-  })
+  afterAll(async () => {
+    await app.close();
+  });
 });
