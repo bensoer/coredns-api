@@ -1,7 +1,7 @@
 ####################
 # Build Stage
 ####################
-FROM node:20-alpine As build
+FROM node:25-alpine As build
 
 WORKDIR /usr/src/app
 
@@ -26,7 +26,7 @@ USER node
 # Production
 ####################
 
-FROM node:20-alpine as production
+FROM node:25-alpine as production
 
 ENV NODE_ENV production
 
